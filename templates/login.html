@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In</title>
+    <link rel="icon" href="{{ url_for('static', filename='img/registration_img.png') }}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background:#292929;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        form {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+            transition: box-shadow 0.3s ease;
+        }
+
+        form:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            padding-bottom: 20px;
+            font-size: 1.7rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            font-size: 0.8rem;
+            color: black;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s, background-color 0.3s;
+            background-color: #fafafa;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #333;
+            background-color: #fff;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: black;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #444;
+            transform: translateY(-2px);
+        }
+
+        .alternative {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .alternative hr {
+            border: none;
+            border-top: 1px solid black;
+            width: 100px;
+            display: inline-block;
+        }
+
+        .alternative h5 {
+            display: inline-block;
+            margin: 0 10px;
+            color: #999;
+        }
+
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .signup-link a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <form method="POST" action="{{ url_for('login') }}">
+        <h1>Welcome Back!</h1>
+        <label for="username">Username</label>
+        <input type="text" name="username" placeholder="Enter your username">
+
+        <label for="password">Password</label>
+        <input type="password" name="password" placeholder="Enter your password">
+
+        <button type="submit">Log In</button>
+        <div class="alternative">
+            <hr><h5>Or</h5><hr>
+        </div>
+    
+        <div class="signup-link">
+            <h3>Don't have an account?</h3>
+            <a href="{{ url_for('Registration') }}">Register now</a>
+        </div>
+    </form>
+
+</body>
+</html>

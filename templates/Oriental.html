@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='img/logo.png') }}">
+    <title>Oriental Perfume - Perfect Perfume</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/perfumes.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #f9f9f9;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        
+        .dropdown-content a:hover {
+            background-color: black;
+            color:white;
+        }
+        
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <nav>
+            <h1>Perfect Perfume</h1>
+            <ol>
+                <li><a href="{{url_for('home')}}">Home |</a></li>
+                <li><a href="#aboutus">About Us | </a></li>
+                <li><a href="#contact">Contact | </a></li>
+                {% if session.get('user_status') == "Registered" or session.get('user_status') == "logged_in"%}
+                <li><a href="{{url_for('view_cart')}}"> Cart |</a></li>
+                <li>
+                    <div class="dropdown">
+                        <a href="#" onclick="toggleDropdown()">
+                            <i class="fas fa-user-circle" style="font-size: 20px;"></i>
+                        </a>
+                        <div class="dropdown-content" id="userDropdown">
+                            <a href="{{url_for('myprofile')}}">My profile</a>
+                            <a href="{{url_for('logout')}}">Log out</a>
+                        </div>
+                    </div>
+                </li>
+                {% else %}
+                    <li><a href="{{url_for('Registration')}}">Registration</a></li>
+                    <li><a href="{{url_for('login')}}"> Log In</a></li>
+                {% endif %}
+            </ol>
+        </nav>
+    </div>
+    
+    <div class="product-detail">
+        <img src="{{url_for('static',filename='img/perfume_img4.png')}}" alt="Oriental Perfume">
+        <div class="product-info"> <!-- New container for details and specs -->
+            <div class="product-detail-content">
+                <h1>Oriental Perfume</h1>
+                <p>100ml - Feel the smell of flowers. Immerse yourself in a garden of pure enchantment with our Perfect Floral perfume. This exquisite fragrance captures the essence of blooming flowers, creating a symphony of floral notes that are both delicate and intoxicating. Ideal for any occasion, it leaves a lasting impression and transports you to a world of pure bliss.</p>
+                <p class="price">₹599</p>
+                <form method = "POST" action="{{url_for('add_to_cart',product_id = 4)}}">
+                    <div class="quantity-container">
+                        <label class="quantity-label" for="quantity">Quantity:</label>
+                        <select class="quantity-dropdown" id="quantity" name = "quantity">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="add-to-cart">Add to Cart</button>
+                    <a href="{{url_for('Buy_now',product_id = 4)}}" class="buy-now">Buy now</a>
+                </form>
+            </div>
+            <hr>
+            <div class="product-specifications">
+                <h1>Product details</h1> 
+                <table>
+                    <tr>
+                        <th>Product ID</th>
+                        <td>4</td>
+                    </tr>
+                    <tr>
+                        <th>Target Gender</th>
+                        <td>Unisex</td>
+                    </tr>
+                    <tr>
+                        <th>Scent</th>
+                        <td>Original</td>
+                    </tr>
+                    <tr>
+                        <th>Item Form</th>
+                        <td>Bar</td>
+                    </tr>
+                    <tr>
+                        <th>Ingredients</th>
+                        <td>Spices</td>
+                    </tr>
+                    <tr>
+                        <th>Special Feature</th>
+                        <td>Natural Ingredients</td>
+                    </tr>
+                    <tr>
+                        <th>Item Volume</th>
+                        <td>60 Millilitres</td>
+                    </tr>
+                    <tr>
+                        <th>Country of Origin</th>
+                        <td>India</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <br>
+    <div class="Aboutus" id="aboutus">
+        <h2 style="text-align: center;"><u>About Us</u></h2>
+        <br>
+        <p> Welcome to our perfume haven! We are a passionate startup dedicated to bringing you the finest and most enchanting fragrances. Each scent in our collection is carefully crafted to evoke emotions and create lasting memories. Our mission is to provide high-quality perfumes that not only smell amazing but also make you feel confident and unique. Join us on this aromatic journey and discover your signature scent today! Our mission is to provide exceptional perfumes that not only smell amazing but also make you feel confident and unique. We believe that a great fragrance can transform your day, uplift your spirits, and leave a lasting impression. That's why we meticulously design each perfume to ensure it resonates with your personality and style. We are committed to sustainability and ethical practices, ensuring that our products are not only luxurious but also environmentally friendly. Join us on this aromatic journey and discover your signature scent today! Thank you for being a part of our story.</p>
+    </div>
+    <br>
+    <div class="Contact">
+        <h2><u>Contact</u></h2>
+        <br>
+        <h4>perfectperfume@gmail.com</h4>
+        <h4>ppservices@gmail.com</h4>
+        <br>
+        <div class="social-menu">
+            <ul>
+                <li><a href="https://www.linkedin.com/in/mohanaprasath-v-believeyourself55/" target="blank"><i class="fab fa-linkedin"></i></i></a></li>
+                <li><a href="https://github.com/Mohanaprasath055/Perfect_Perfume" target="blank"><i class="fab fa-github"></i></a></li>
+                <li><a href="https://www.instagram.com/google/in/" target="blank"><i class="fab fa-instagram"></i></a></li>
+            </ul>
+        </div>
+        <br>
+        <p>We'd love to hear from you! Whether you have questions about our perfumes, need help with an order, or just want to share your fragrance story, our team is here to assist you. Reach out to us through any of the channels below, and we'll get back to you as soon as possible. Your feedback is invaluable to us, so please let us know your thoughts and suggestions. If you encounter any issues, kindly report them to the email provided above. Thank you for choosing us for your fragrance needs!</p>
+    </div>
+</body>
+</html>

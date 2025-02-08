@@ -1,0 +1,6 @@
+Flask==3.0.3
+Flask-Mail==0.9.1
+gunicorn==21.2.0
+mysql-connector-python==9.0.0
+werkzeug==3.0.1
+pyotp==2.9.0

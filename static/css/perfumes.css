@@ -1,0 +1,230 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Header styles */
+.header nav {
+    background-color: black;
+    color: white;
+    padding: 15px;
+}
+
+nav h1 {
+    display: inline-block;
+}
+
+nav ol {
+    float: right;
+    margin: 0;
+}
+
+nav li {
+    display: inline-block;
+    margin-left: 10px;
+    color: grey;
+    cursor: pointer;
+}
+
+nav li:hover {
+    color: white;
+}
+
+nav a {
+    color: grey;
+    text-decoration: none;
+}
+
+nav a:hover {
+    color: white;
+}
+
+/* Product detail layout */
+.product-detail {
+    display: flex;
+    align-items: flex-start;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.product-detail img {
+    width: 500px;
+    height: 500px;
+    border: 2px solid black;
+    margin-right: 50px;
+    margin-left: 20px;
+}
+
+/* New container to stack details and specs */
+.product-info {
+    max-width: 600px;
+    display: flex;
+    flex-direction: column; /* Stacks children vertically */
+}
+
+.product-detail h1 {
+    font-size: 36px;
+    margin-bottom: 20px;
+}
+
+.product-detail p {
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+.product-detail .price {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.product-detail .add-to-cart {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 20px 0;
+    background-color: black;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.product-detail .add-to-cart:hover {
+    background-color: grey;
+}
+.product-detail .buy-now {
+    display: inline-block;
+    padding: 10px 20px;
+    margin: 20px 0;
+    margin-left:10px;
+    background-color: black;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.product-detail .buy-now:hover {
+    background-color: grey;
+}
+/* Product specifications */
+.product-specifications {
+    margin-top: 20px; /* Adds space above product specifications */
+}
+
+.product-specifications h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+.product-specifications th, 
+.product-specifications td {
+    font-size: 18px;
+    margin: 10px 0;
+    text-align: left;
+}
+
+.product-specifications th {
+    font-weight: bold;
+}
+.Aboutus{
+    margin-top:20px ;
+    padding: 10px;
+}
+.Contact{
+    background-color: black;
+    color : white;
+    text-align: center;
+    padding: 20px;
+}
+.h{
+    color: black;
+}
+.quotes{
+    padding: 10px;
+}
+.box a{
+    text-decoration: none;
+    color: inherit;
+}
+.social_media{
+    display: inline-block;   
+    text-align: center;
+    margin: 0px;
+    padding: 3px;
+    border: 2px;
+    border-color: white;
+    border-style: solid;
+}
+
+#copyright{
+    margin-left:20px;
+}
+.social-menu ul{
+    display: flex;
+    padding:0;
+    margin-left:43%;
+}
+  
+.social-menu ul li{
+    list-style: none;
+    display:inline-block;
+    margin: 0 15px;
+}
+  
+.social-menu ul li .fab{
+    font-size: 25px;
+    line-height: 40px;
+    transition: .3s;
+    color: #000;
+}
+  
+.social-menu ul li .fab:hover{
+    color: #fff;
+}
+  
+.social-menu ul li a{
+    position: relative;
+    display: block;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #fff;
+    text-align: center;
+    transition: .6s;
+    box-shadow: 0 5px 4px rgba(0,0,0,.5);
+}
+.social-menu ul li a:hover{
+    transform: translate(0, -10%);
+}
+  
+.social-menu ul li:nth-child(1) a:hover{
+    background-color: #4267B2;
+}
+.social-menu ul li:nth-child(2) a:hover{
+    background-color: black;
+}
+.social-menu ul li:nth-child(3) a:hover{
+    background-color:#E1306C;
+}
+
+.quantity-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 25px;
+    width: 220px; /* Adjust the container width as needed */
+}
+
+.quantity-label {
+    margin-right: 20px;
+}
+
+.quantity-dropdown {
+    margin-left: auto;
+    width: 90px; /* Set the width of the dropdown */
+    height: 30px; /* Set the height of the dropdown */
+    font-size: 20px; /* Increase the font size inside the dropdown */
+    padding: 5px 5px; /* Add some padding inside the dropdown */
+}

@@ -1,0 +1,99 @@
+<html>
+    <head>
+        <title>My Profile</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <style>
+            body {
+                font-family: 'Arial', sans-serif;
+                background-color: #292929;
+                color: #333;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .profile-icon {
+                color: grey;
+              }
+            .profile-container {
+                background-color: #ffffff;
+                border-radius: 20px;
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+                padding: 40px;
+                max-width: 700px;
+                width: 100%;
+                text-align: center;
+            }
+            .profile-icon {
+                font-size: 100px;
+                color: #5a9;
+                margin-bottom: 20px;
+            }
+            table {
+                width: 100%;
+                margin-bottom: 20px;
+                border-collapse: collapse;
+            }
+            table td {
+                padding: 10px;
+                vertical-align: top;
+                text-align: left;
+            }
+            table td label {
+                font-weight: bold;
+                color: #555;
+            }
+
+            table td:nth-child(2) {
+                color: #888;
+            }
+            .btn-black {
+                background-color: #000000;
+                text-decoration: none;
+                color: #ffffff;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-size: 16px;
+                border: none;
+                transition: background-color 0.3s ease, transform 0.3s ease;
+            }
+            .btn-black:hover {
+                background-color: #333333;
+                transform: scale(1.05);
+            }
+            .btn-grey {
+                background-color: #808080;
+                color: #ffffff;
+                text-decoration: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-size: 16px;
+                border: none;
+                transition: background-color 0.3s ease, transform 0.3s ease;
+            }
+            .btn-grey:hover {
+                background-color: #606060;
+                transform: scale(1.05);
+            }
+        </style>
+    </head>
+<body>
+    <div class="profile-container">
+        <i class="fas fa-user profile-icon"></i>
+        <table>
+            <tr>
+                <td><label for="username">Username:</label></td> 
+                <td>{{user[1]}}</td>
+            </tr>
+            <tr>
+                <td><label for="email">Email:</label></td> 
+                <td>{{user[3]}} </td>
+            </tr>
+        </table>
+        <a href="{{url_for('view_cart')}}" class="btn-black me-2">Your cart</a>
+        <a href="{{url_for('index')}}" class="btn-grey">Back to home</a>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

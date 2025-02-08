@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #333;
+            font-family: 'Poppins', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .box {
+            background-color: #fff;
+            padding: 40px;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            text-align: left; /* Align text to the left for better readability */
+        }
+
+        h1 {
+            color: #1c1c1c;
+            font-size: 2.5em;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #666;
+            font-size: 1.5em;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f5f5f5;
+            color: #333;
+            font-weight: 600;
+        }
+
+        td {
+            background-color: #fafafa;
+            color: #666;
+        }
+
+        a {
+            display: inline-block;
+            background-color: #1c1c1c;
+            color: #fff;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.3s;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        a:hover {
+            background-color: #555;
+            transform: translateY(-3px);
+        }
+    </style>
+    <title>Order Confirmation</title>
+</head>
+<body>
+    <div class="box">
+        <h1>Order Confirmation</h1>
+        <h2>Thanks for your order!</h2>
+        <h2>Your order will be delivered within 3 to 4 days</h2>
+        
+        <table>
+            <tr>
+                <th>Product ID</th>
+                <th>Product Name</th>
+                <th>Ingredients</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Address</th>
+            </tr>
+            <tr>
+                <td>{{ product_id }}</td>
+                <td>{{ product_name }}</td>
+                <td>{{ Ingredients }}</td>
+                <td>{{ price }}</td>
+                <td>{{ quantity }}</td>
+                <td>{{ address }}</td>
+            </tr>
+        </table>
+        <center><a href="{{ url_for('index') }}">Back to home</a></center>
+    </div>
+</body>
+</html>

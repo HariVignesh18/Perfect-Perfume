@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Registration Form</title>
+    <!-- Google Fonts for unique font family -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='registration_img/logo.png') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #292929;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        form {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            width: 100%;
+            transition: box-shadow 0.3s ease;
+        }
+
+        form:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            text-align: center;
+            font-weight: 600;
+            color: #333;
+            padding-bottom:20px;
+            font-size: 1.8rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            font-size: 0.9rem;
+            color: black;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s, background-color 0.3s;
+            background-color: #fafafa;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="email"]:focus,
+        select:focus {
+            border-color: #333;
+            background-color: #fff;
+            outline: none;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        input[type="radio"] {
+            margin-right: 8px;
+        }
+
+        .radio-group label {
+            font-weight: 400;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background:black;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #444;
+            transform: translateY(-2px);
+        }
+
+        .reset-button {
+            margin-top: 10px;
+            background-color: grey;
+        }
+
+        .reset-button:hover {
+            background-color: #888;
+        }
+
+        .alternative {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .alternative hr {
+            border: none;
+            border-top: 1px solid black;
+            width: 100px;
+            display: inline-block;
+        }
+
+        .alternative h5 {
+            display: inline-block;
+            margin: 0 10px;
+            color: #999;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .login-link a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        #otp-verify{
+            display:none;
+        }
+        .error {
+            color: red;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<form method="POST" action="{{ url_for('Registration') }}">
+    <h1>Registration Form</h1>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <p class="error">{{ messages[0] }}</p>
+        {% endif %}
+    {% endwith %}
+    <label for="username">Username</label>
+        <input type="text" name="username" placeholder="Enter your name" required>
+
+        <label for="password">Password</label>
+        <input type="password" name="password" placeholder="Set a password" required>
+
+        <label for="email">Email</label>
+        <input type="email" name="email" placeholder="Enter your email" required>
+
+        <button type="submit">Submit</button>
+        <button type="reset" class="reset-button">Reset</button>
+    <div class="alternative">
+        <hr><h5>Or</h5><hr>
+    </div>
+
+    <div class="login-link">
+        <h3>Already have an account?</h3>
+        <a href="{{ url_for('login') }}">Log In</a>
+    </div>
+</form>
+</body>
+</html>

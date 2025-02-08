@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Buy item</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #292929;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        form {
+            width: 80%;
+            max-width: 600px;
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        h1 {
+            font-size: 28px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #000;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 15px;
+        }
+
+        td {
+            padding: 0 10px;
+            vertical-align: middle;
+            text-align: left;
+        }
+
+        label {
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        label:hover {
+            color: #000;
+        }
+
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #333;
+            background-color: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: #000;
+            background-color: #fff;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+            outline: none;
+        }
+
+        input[type="text"]:hover, input[type="number"]:hover, select:hover {
+            border-color: #888;
+        }
+
+        select {
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #000;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #333;
+            transform: translateY(-3px);
+        }
+
+        .reset-button {
+            background-color: #555;
+        }
+
+        .reset-button:hover {
+            background-color: #222;
+            transform: translateY(-3px);
+        }
+
+        h3 {
+            margin-top: 20px;
+            font-size: 14px;
+            text-align: center;
+            color: #555;
+        }
+
+        h3 strong {
+            color: #000;
+        }
+        @media (max-width: 768px) {
+            form {
+                width: 90%;
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            input[type="text"], input[type="number"], select {
+                font-size: 14px;
+            }
+
+            button {
+                font-size: 14px;
+            }
+
+            td {
+                display: block;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            td:last-child {
+                margin-bottom: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <form method="POST" action="{{ url_for('Buy_now', product_id=product_id) }}">
+        <h1>Details for Delivery Address:</h1>
+        <table>
+            <tr>
+                <td><label for="plotno">Room No / Plot No</label></td>
+                <td><input type="text" name="plotno" id="plotno" placeholder="Enter your Plot/Room number"></td>
+            </tr>
+            <tr>
+                <td><label for="street">Street Address</label></td>
+                <td><input type="text" name="street" id="street" placeholder="Enter your Street Address"></td>
+            </tr>
+            <tr>
+                <td><label for="areaname">Area Name</label></td>
+                <td><input type="text" name="areaname" id="areaname" placeholder="Enter Your Area Name"></td>
+            </tr>
+            <tr>
+                <td><label for="state">State</label></td>
+                <td><input type="text" name="state" id="state" placeholder="Enter your state"></td>
+            </tr>
+            <tr>
+                <td><label for="pincode">Pincode</label></td>
+                <td><input type="number" name="pincode" id="pincode" placeholder="Enter your pincode"></td>
+            </tr>
+            <tr>
+                <td><label for="country">Select Country</label></td>
+                <td><select name="country" id="country">
+                    <option value="" disabled selected>Select your country</option>
+                    <option value="India">India</option>
+                    <option value="Australia">Australia</option>
+                    <option value="England">England</option>
+                    <option value="South Africa">South Africa</option>
+                    <option value="USA">USA</option>
+                </select></td>
+            </tr>
+            <tr>
+                <td><label for="quantity">Enter the quantity of the product</label></td>
+                <td><select name="quantity" id="quantity">
+                    <option value="" disabled selected>Quantity of the selected product</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                </select></td>
+            </tr>
+            <tr>
+                <td><button type="submit">Submit</button></td>
+                <td><button type="reset" class="reset-button">Reset</button></td>
+            </tr>
+        </table>
+        <h3>NOTE:</h3>
+        <h3>"As part of our service, you can pay for your perfume upon delivery, allowing you to inspect and enjoy the fragrance before the payment."</h3>
+    </form>
+</body>
+</html>
