@@ -1,45 +1,53 @@
-<h1>PERFECT PERFUME</h1>
-<h4>A scalable e-commerce platform for direct perfume sales, focusing on backend system integration and user interface optimization. Implemented a dynamic cart system to enhance the shopping experience, ensuring smooth transactions and user interactions with an order confirmation email system. Now hosted on <b>Vercel</b> for seamless deployment.</h4>
-<hr>
+# PERFECT PERFUME
 
-<h2>Technologies Used</h2>
-<h3>Frontend:</h3>
-<ul>
-  <li>HTML</li>
-  <li>CSS</li>
-  <li>JavaScript</li>
-  <li>Bootstrap</li>
-</ul>
+A scalable e-commerce platform for direct perfume sales, focusing on backend system integration and user interface optimization. Implemented a dynamic cart system to enhance the shopping experience, ensuring smooth transactions and user interactions with an order confirmation email system. Now hosted on **Vercel** for seamless deployment.
 
-<h3>Backend:</h3>
-<ul>
-  <li>Python</li>
-  <li>Flask</li>
-  <li>MySQL</li>
-  <li>werkzeug.security</li>
-  <li>Flask-Mail (for email notifications)</li>
-</ul>
+---
 
-<h3>Programming Concepts</h3>
-<ul>
-  <li>Object-Oriented Programming</li>
-  <li>Data Structures & Algorithms (Stack, Sorting)</li>
-</ul>
+## Technologies Used
 
-<h3>Deployment:</h3>
-<ul>
-  <li>Hosted on <b>Vercel</b> with environment variables configured for secure access.</li>
-</ul>
+### Frontend:
+- HTML
+- CSS
+- JavaScript
+- Bootstrap
 
-<h3>HOW TO GET STARTED:</h3>
-<p><b>Step 1:</b> Clone the repository to your local environment.</p>
-<p><b>Step 2:</b> Set up environment variables in a <code>.env</code> file:</p>
+### Backend:
+- Python
+- Flask
+- MySQL
+- werkzeug.security
+- Flask-Mail (for email notifications)
 
+### Programming Concepts:
+- Object-Oriented Programming
+- Data Structures & Algorithms (Stack, Sorting)
+
+### Deployment:
+- Hosted on **Vercel** with environment variables configured for secure access.
+
+---
+
+## HOW TO GET STARTED:
+
+### Step 1: Clone the repository
+Clone the repository to your local environment using:
+```bash
+ git clone https://github.com/yourusername/perfect-perfume.git
+```
+
+### Step 2: Set up Environment Variables
+Create a `.env` file and add the following configurations:
 ```env
 APP_SECRET=your_secret_key
 EMAIL=your_email
 EMAIL_PWD=your_app_password
-<p><b>Step 3:</b> Open your MySQL Workbench and execute the following commands:</p>
+```
+
+### Step 3: Set Up MySQL Database
+Open MySQL Workbench and execute the following SQL commands:
+
+```sql
 CREATE DATABASE perfume_company;
 USE perfume_company;
 
@@ -62,7 +70,7 @@ CREATE TABLE product (
     price INT
 );
 
-INSERT INTO product VALUES 
+INSERT INTO product VALUES
 (1, 'Floral Perfume', 'Unisex', 'Spray', 'Jasmine', 'Natural Ingredients', 60, 'India', 599),
 (2, 'Woody Perfume', 'Unisex', 'Spray', 'Cedarwood', 'Long-lasting', 60, 'India', 699),
 (3, 'Citrus Perfume', 'Unisex', 'Spray', 'Essential Oils', 'Fresh Fragrance', 60, 'India', 799);
@@ -97,7 +105,19 @@ CREATE TABLE cart (
     FOREIGN KEY (user_id) REFERENCES customerdetails(user_id),
     FOREIGN KEY (product_id) REFERENCES product(product_id)
 );
-<p><b>Step 4:</b> Install dependencies and run the application.</p>
+```
+
+### Step 4: Install Dependencies
+Navigate to the project directory and install the required dependencies:
+```bash
 pip install -r requirements.txt
+```
+
+### Step 5: Run the Application
+Start the Flask application using:
+```bash
 python app.py
-<p>The website is now successfully deployed on <b>Vercel</b> and ready for use!</p> ```
+```
+
+The website is now successfully deployed on **Vercel** and ready for use! 🚀
+
