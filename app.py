@@ -85,7 +85,7 @@ def verify_otp():
                 session["user_status"] = "Registered"
                 conn = get_db_connection()
                 cursor = conn.cursor()
-                msg = Message("Welcome to Perfect Perfume! 🌸", sender=os.getenv('EMAIL'), recipients=[session["email"]])
+                msg = Message("Welcome to Perfect Perfume! ", sender=os.getenv('EMAIL'), recipients=[session["email"]])
                 msg.body = f"""
 Dear {session['username']},
 
