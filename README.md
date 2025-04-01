@@ -119,5 +119,5 @@ Start the Flask application using:
 python app.py
 ```
 
-The website is now successfully deployed on **Vercel** and ready for use! 🚀
+
 
