@@ -23,7 +23,8 @@ def get_db_connection():
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USERNAME'),
         password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_DBNAME')
+        database=os.getenv('DB_DBNAME'),
+        ssl_ca=os.getenv('DB_SSL_CA')
     )
 
 
@@ -32,7 +33,7 @@ def generate_otp_secret():
 
 def send_otp(email, otp):
     msg = Message("Your OTP Code", sender=os.getenv('EMAIL'), recipients=[email])
-    msg.body = f"Your OTP code is: {otp}. It is valid for 1 minute."
+    msg.body = f"Your OTP code is: {otp}. It is valid for 5 minutes."
 
     try:
         mail.send(msg)
@@ -57,12 +58,10 @@ def Registration():
 
         totp = pyotp.TOTP(otp_secret)
         otp = totp.now()
-        session['otp_timestamp'] = int(time.time()) 
-
-        print(f"Generated OTP: {otp}")
+        session['otp_timestamp'] = int(time.time())
 
         if send_otp(session['email'], otp):
-            flash("OTP sent to your email. Please verify within 1 minute.", "info")
+            flash("OTP sent to your email. Please verify within 5 minutes.", "info")
             return redirect(url_for('verify_otp'))
         else:
             flash("Failed to send OTP. Try again.", "danger")
@@ -73,10 +72,9 @@ def Registration():
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
     if request.method == 'POST':
-        entered_otp = request.form.get('otp')
-
+        entered_otp = request.form.get('otp').strip()
         if 'otp_secret' in session and 'otp_timestamp' in session:
-            if int(time.time()) - session['otp_timestamp'] > 60:
+            if int(time.time()) - session['otp_timestamp'] > 300:
                 flash("OTP expired. Register again.", "danger")
                 return redirect(url_for('Registration'))
 
