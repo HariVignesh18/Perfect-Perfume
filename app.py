@@ -57,8 +57,9 @@ def Registration():
         session['otp_secret'] = otp_secret
 
         totp = pyotp.TOTP(otp_secret)
-        otp = totp.now()
-        session['otp_timestamp'] = int(time.time())
+        timestamp = int(time.time())
+        otp = totp.at(timestamp)
+        session['otp_timestamp'] = timestamp
 
         if send_otp(session['email'], otp):
             flash("OTP sent to your email. Please verify within 5 minutes.", "info")
@@ -79,11 +80,23 @@ def verify_otp():
                 return redirect(url_for('Registration'))
 
             totp = pyotp.TOTP(session['otp_secret'])
-            if totp.verify(entered_otp, valid_window=0): 
+            otp_timestamp = session['otp_timestamp']
+            time_window = 30
+
+            valid = False
+            for offset in [-1, 0, 1]:
+                test_time = otp_timestamp + (offset * time_window)
+                expected_otp = totp.at(test_time)
+                if entered_otp == expected_otp:
+                    valid = True
+                    break
+
+            if valid:
                 session["user_status"] = "Registered"
                 conn = get_db_connection()
                 cursor = conn.cursor()
-                msg = Message("Welcome to Perfect Perfume! ", sender=os.getenv('EMAIL'), recipients=[session["email"]])
+
+                msg = Message("Welcome to Perfect Perfume!", sender=os.getenv('EMAIL'), recipients=[session["email"]])
                 msg.body = f"""
 Dear {session['username']},
 
@@ -98,6 +111,7 @@ Best wishes,
 Perfect Perfume Team
 """
                 mail.send(msg)
+
                 cursor.execute("INSERT INTO customerdetails (username, password, email) VALUES (%s, %s, %s)",
                                (session['username'], session['password'], session['email']))
                 conn.commit()
@@ -106,6 +120,7 @@ Perfect Perfume Team
 
                 session.pop('otp_secret', None)
                 session.pop('otp_timestamp', None)
+
                 flash("OTP Verified! Registration successful.", "success")
                 return redirect(url_for('index'))
             else:
