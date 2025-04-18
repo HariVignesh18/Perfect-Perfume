@@ -93,6 +93,7 @@ CREATE TABLE orders (
     product_id INT,
     order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     quantity INT,
+    address VARCHAR(100),
     FOREIGN KEY (user_id) REFERENCES customerdetails(user_id),
     FOREIGN KEY (product_id) REFERENCES product(product_id)
 );
@@ -102,6 +103,7 @@ CREATE TABLE cart (
     user_id INT,
     product_id INT,
     quantity INT DEFAULT 1,
+    added_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES customerdetails(user_id),
     FOREIGN KEY (product_id) REFERENCES product(product_id)
 );
