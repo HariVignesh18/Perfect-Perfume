@@ -163,7 +163,7 @@ def view_cart():
       user_id = cursor.fetchone()
       if user_id:
          user_id = user_id[0]
-         cursor.execute("""SELECT p.product_name,p.target_gender,p.item_form,p.Ingredients,p.special_feature,p.item_volume,p.country,c.quantity,(p.price*c.quantity) as price 
+         cursor.execute("""SELECT p.product_name,p.target_gender,p.item_form,p.Ingredients,p.special_features,p.item_volume,p.country,c.quantity,(p.price*c.quantity) as price 
                         from cart c 
                         join product p on p.product_id = c.product_id 
                         where c.user_id = %s
