@@ -9,7 +9,6 @@ A scalable e-commerce platform for direct perfume sales, focusing on backend sys
 ### Frontend:
 - HTML
 - CSS
-- JavaScript
 - Bootstrap
 
 ### Backend:
