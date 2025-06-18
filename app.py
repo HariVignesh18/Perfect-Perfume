@@ -23,8 +23,7 @@ def get_db_connection():
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USERNAME'),
         password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_DBNAME'),
-        ssl_ca=os.getenv('DB_SSL_CA')
+        database=os.getenv('DB_DBNAME')
     )
 
 
