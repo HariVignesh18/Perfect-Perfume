@@ -73,6 +73,9 @@ INSERT INTO product VALUES
 (1, 'Floral Perfume', 'Unisex', 'Spray', 'Jasmine', 'Natural Ingredients', 60, 'India', 599),
 (2, 'Woody Perfume', 'Unisex', 'Spray', 'Cedarwood', 'Long-lasting', 60, 'India', 699),
 (3, 'Citrus Perfume', 'Unisex', 'Spray', 'Essential Oils', 'Fresh Fragrance', 60, 'India', 799);
+(4,'Oriental Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599),
+(5,'Fresh Aquatic Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599),
+(6,'Gourmand Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599);
 
 CREATE TABLE address (
     address_id INT AUTO_INCREMENT PRIMARY KEY,
