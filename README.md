@@ -41,6 +41,11 @@ Create a `.env` file and add the following configurations:
 APP_SECRET=your_secret_key
 EMAIL=your_email
 EMAIL_PWD=your_app_password
+DB_HOST=your_db_hostname
+DB_USERNAME=your_db_username
+DB_PASSWORD=your_db_password
+DB_DBNAME=your_db_name
+MAILPORT=your_mail_port
 ```
 
 ### Step 3: Set Up MySQL Database
