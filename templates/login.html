@@ -91,6 +91,33 @@
             transform: translateY(-2px);
         }
 
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 1px solid #ddd;
+            color: #444;
+            font-weight: 500;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            cursor: pointer;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            text-decoration: none;
+        }
+
+        .google-btn:hover {
+            background: #f7f7f7;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .google-btn img {
+            height: 20px;
+            width: 20px;
+            margin-right: 10px;
+        }
+
         .alternative {
             text-align: center;
             margin: 20px 0;
@@ -140,7 +167,14 @@
         <div class="alternative">
             <hr><h5>Or</h5><hr>
         </div>
-    
+
+        <!-- Google Login Button -->
+        <a class="google-btn" href="{{ url_for('google.login') }}">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google Logo">
+                Log in with Google
+        </a>
+
+
         <div class="signup-link">
             <h3>Don't have an account?</h3>
             <a href="{{ url_for('Registration') }}">Register now</a>
