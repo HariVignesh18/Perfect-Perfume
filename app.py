@@ -11,13 +11,11 @@ load_dotenv()
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 app = Flask(__name__)
 google_bp = make_google_blueprint(
-    client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
-    client_secret=os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
-    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+    client_id=os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
     redirect_to="google_login",
-    reprompt_consent=True  # forces account selection
+    scope=["profile", "email"]
 )
-
 app.register_blueprint(google_bp, url_prefix="/login")
 app.secret_key = os.getenv('APP_SECRET')
 
@@ -35,37 +33,8 @@ def get_db_connection():
         host=os.getenv('DB_HOST'),
         user=os.getenv('DB_USERNAME'),
         password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_DBNAME'),
-        buffered=True
+        database=os.getenv('DB_DBNAME')
     )
-
-
-def get_current_user_id():
-   """Return current user's user_id (cached in session) or look it up.
-
-   This avoids ambiguous lookups when there are duplicate emails/usernames.
-   Stores user_id in session for future requests.
-   """
-   if 'user_id' in session:
-      return session['user_id']
-
-   conn = get_db_connection()
-   cursor = conn.cursor()
-   try:
-      if 'email' in session and session['email']:
-         cursor.execute("SELECT user_id FROM customerdetails WHERE email=%s LIMIT 1", (session['email'],))
-      elif 'username' in session and session['username']:
-         cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s LIMIT 1", (session['username'],))
-      else:
-         return None
-      row = cursor.fetchone()
-      if row:
-         session['user_id'] = row[0]
-         return row[0]
-      return None
-   finally:
-      cursor.close()
-      conn.close()
 
 
 def generate_otp_secret():
@@ -100,33 +69,24 @@ def google_login():
     email = user_info["email"]
     username = user_info.get("name", email.split("@")[0])
 
+    # Check if user exists in DB
     conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)  # fetch as dict
-
-    # Check if user exists by email
-    cursor.execute("SELECT * FROM customerdetails WHERE email=%s", (email,))
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM customerdetails WHERE email=%s", (email,))
     user = cursor.fetchone()
 
     if not user:
-        # Insert new Google user
-        cursor.execute(
-            "INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
-            (username, email, None)
-        )
+        # If new user, insert into DB
+        cursor.execute("INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
+                       (username, email, None))
         conn.commit()
-        cursor.execute("SELECT * FROM customerdetails WHERE email=%s", (email,))
-        user = cursor.fetchone()
-
-    # Use email in session to uniquely identify OAuth users
-    session['username'] = user['username']
-    session['email'] = user['email']
-   # store numeric id to avoid ambiguity when multiple rows share the same email
-    session['user_id'] = user.get('user_id')
-    session['user_status'] = "logged_in"
 
     cursor.close()
     conn.close()
 
+    # Log the user in
+    session['username'] = username
+    session['user_status'] = "logged_in"
     flash(f"Logged in as {username} via Google!", "success")
     return redirect(url_for("index"))
 
@@ -156,45 +116,33 @@ def Registration():
 
 @app.route('/verify_otp', methods=['GET', 'POST'])
 def verify_otp():
-   if request.method == 'POST':
-      entered_otp = (request.form.get('otp') or '').strip()
+    if request.method == 'POST':
+        entered_otp = request.form.get('otp').strip()
+        if 'otp_secret' in session and 'otp_timestamp' in session:
+            if int(time.time()) - session['otp_timestamp'] > 300:
+                flash("OTP expired. Register again.", "danger")
+                return redirect(url_for('Registration'))
 
-      # basic session checks
-      if 'otp_secret' not in session or 'otp_timestamp' not in session:
-         flash("OTP session expired. Register again.", "danger")
-         return redirect(url_for('Registration'))
+            totp = pyotp.TOTP(session['otp_secret'])
+            otp_timestamp = session['otp_timestamp']
+            time_window = 30
 
-      # expiry check
-      if int(time.time()) - session['otp_timestamp'] > 300:
-         flash("OTP expired. Register again.", "danger")
-         return redirect(url_for('Registration'))
+            valid = False
+            for offset in [-1, 0, 1]:
+                test_time = otp_timestamp + (offset * time_window)
+                expected_otp = totp.at(test_time)
+                if entered_otp == expected_otp:
+                    valid = True
+                    break
 
-      totp = pyotp.TOTP(session['otp_secret'])
-      otp_timestamp = session['otp_timestamp']
-      time_window = 30
+            if valid:
+                session["user_status"] = "Registered"
+                conn = get_db_connection()
+                cursor = conn.cursor()
 
-      valid = False
-      for offset in (-1, 0, 1):
-         test_time = otp_timestamp + (offset * time_window)
-         expected_otp = totp.at(test_time)
-         if entered_otp == expected_otp:
-            valid = True
-            break
-
-      if not valid:
-         flash("Invalid OTP. Try again.", "danger")
-         return render_template('verify_otp.html')
-
-      # OTP valid -> create user and send welcome email
-      session["user_status"] = "Registered"
-      conn = get_db_connection()
-      cursor = conn.cursor()
-      try:
-         # send welcome email (best-effort)
-         try:
-            msg = Message("Welcome to Perfect Perfume!", sender=os.getenv('EMAIL'), recipients=[session.get("email")])
-            msg.body = f"""
-Dear {session.get('username')},
+                msg = Message("Welcome to Perfect Perfume!", sender=os.getenv('EMAIL'), recipients=[session["email"]])
+                msg.body = f"""
+Dear {session['username']},
 
 We're thrilled to have you as part of our fragrance family. Explore our exquisite collection of perfumes crafted to enchant your senses. Whether you’re seeking a signature scent or a gift for someone special, we have something perfect for you!
 
@@ -206,73 +154,59 @@ Feel free to reach out if you have any questions or need assistance. Happy explo
 Best wishes,  
 Perfect Perfume Team
 """
-            mail.send(msg)
-         except Exception:
-            # don't block registration if email fails
-            pass
+                mail.send(msg)
 
-         cursor.execute("INSERT INTO customerdetails (username, password, email) VALUES (%s, %s, %s)",
-                     (session.get('username'), session.get('password'), session.get('email')))
-         conn.commit()
+                cursor.execute("INSERT INTO customerdetails (username, password, email) VALUES (%s, %s, %s)",
+                               (session['username'], session['password'], session['email']))
+                conn.commit()
+                cursor.close()
+                conn.close()
 
-         # cache the inserted user's id
-         cursor.execute("SELECT user_id FROM customerdetails WHERE email=%s LIMIT 1", (session.get('email'),))
-         row = cursor.fetchone()
-         if row:
-            session['user_id'] = row[0]
-      finally:
-         cursor.close()
-         conn.close()
+                session.pop('otp_secret', None)
+                session.pop('otp_timestamp', None)
 
-      session.pop('otp_secret', None)
-      session.pop('otp_timestamp', None)
+                flash("OTP Verified! Registration successful.", "success")
+                return redirect(url_for('index'))
+            else:
+                flash("Invalid OTP. Try again.", "danger")
+        else:
+            flash("OTP session expired. Register again.", "danger")
+            return redirect(url_for('Registration'))
 
-      flash("OTP Verified! Registration successful.", "success")
-      return redirect(url_for('index'))
-
-   return render_template('verify_otp.html')
+    return render_template('verify_otp.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-   if request.method == 'POST':
-      username = request.form.get('username')
-      password = request.form.get('password')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-      conn = get_db_connection()
-      # use dictionary cursor so columns are clearer
-      cursor = conn.cursor(dictionary=True)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT password FROM customerdetails WHERE username = %s", (username,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-      # try to find user by email (if present in session) or by username
-      if 'email' in session:
-         cursor.execute("SELECT * FROM customerdetails WHERE email=%s", (session['email'],))
-      else:
-         cursor.execute("SELECT * FROM customerdetails WHERE username=%s", (username,))
+        if result and check_password_hash(result[0], password):
+            session['username'] = username
+            session["user_status"] = "logged_in"
+            flash("Login successful!", "success")
+            return redirect(url_for('index'))
+        else:
+            flash("Invalid username or password.", "danger")
 
-      user = cursor.fetchone()
-
-      if user and user.get('password') and check_password_hash(user.get('password'), password):
-         # successful login
-         session['username'] = user.get('username')
-         session['email'] = user.get('email')
-         session['user_id'] = user.get('user_id')
-         session["user_status"] = "logged_in"
-         cursor.close()
-         conn.close()
-         flash("Login successful!", "success")
-         return redirect(url_for('index'))
-      else:
-         # close resources before returning
-         cursor.close()
-         conn.close()
-         flash("Invalid username or password.", "danger")
-
-   return render_template('login.html')
+    return render_template('login.html')
 @app.route('/view_cart',methods=['GET'])
 def view_cart():
    if 'user_status' in session and (session['user_status']=="Registered" or session['user_status']=="logged_in"):
       username = session.get('username')
-      user_id = get_current_user_id()
+      conn = get_db_connection()
+      cursor = conn.cursor()
+      cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+      user_id = cursor.fetchone()
       if user_id:
+         user_id = user_id[0]
          cursor.execute("""SELECT p.product_name,p.target_gender,p.item_form,p.Ingredients,p.special_features,p.item_volume,p.country,c.quantity,(p.price*c.quantity) as price 
                         from cart c 
                         join product p on p.product_id = c.product_id 
@@ -290,27 +224,20 @@ def view_cart():
 
 @app.route('/myprofile',methods=['POST','GET'])
 def myprofile():
-   if 'user_status' in session and (session['user_status'] == 'Registered' or session['user_status'] == 'logged_in'):
-      username = session.get('username')
-      conn = get_db_connection()
-      # use dictionary cursor so we can access columns by name in template
-      cursor = conn.cursor(dictionary=True)
-      try:
-         if 'email' in session and session['email']:
-            cursor.execute("SELECT username, email FROM customerdetails WHERE email=%s", (session['email'],))
-         else:
-            cursor.execute("SELECT username, email FROM customerdetails WHERE username=%s", (username,))
+      if 'user_status' in session and (session['user_status'] == 'Registered' or session['user_status'] == 'logged_in'):
+         username = session.get('username') 
+         conn = get_db_connection()
+         cursor = conn.cursor()
+         cursor.execute("SELECT * FROM customerdetails WHERE username=%s", (username,))
          user_details = cursor.fetchone()
-      finally:
          cursor.close()
          conn.close()
-
-      if user_details:
-         return render_template('myprofile.html', user=user_details)
+         if user_details:
+            return render_template('myprofile.html',user=user_details)
+         else:
+            return "user not found",400
       else:
-         return "user not found",400
-   else:
-      return redirect(url_for('login'))
+         return redirect(url_for('login'))
       
 
 @app.route('/Floral',methods=['POST','GET'])
@@ -347,8 +274,10 @@ def add_to_cart(product_id):
       username = session.get('username')
       conn = get_db_connection()
       cursor = conn.cursor()
-      user_id = get_current_user_id()
+      cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+      user_id = cursor.fetchone()
       if user_id:
+         user_id = user_id[0]
          quantity = int(request.form.get('quantity',1))
          cursor.execute("SELECT quantity from cart where user_id = %s and product_id = %s",(user_id,product_id))
          product_exists = cursor.fetchone()
@@ -371,8 +300,10 @@ def Buy_now(product_id):
       conn = get_db_connection()
       cursor = conn.cursor()
       try:
-         user_id = get_current_user_id()
+         cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+         user_id = cursor.fetchone()
          if user_id:
+            user_id = user_id[0]
             if request.method == "POST":
                plot_no = request.form.get('plotno')
                street_address = request.form.get('street')
@@ -397,17 +328,12 @@ def Buy_now(product_id):
                            )
                cursor.execute("INSERT INTO orders(user_id,product_id,address,quantity) values(%s,%s,%s,%s)",(user_id,product_id,address,quantity))
                conn.commit()
-               # determine user's email
-               if 'email' in session and session['email']:
-                  user_email = session['email']
-               else:
-                  cursor.execute("SELECT email FROM customerdetails WHERE username=%s", (username,))
-                  row = cursor.fetchone()
-                  user_email = row[0] if row else None
-               if user_email:
-                  msg = Message("Order placed Successfully - Perfect Perfume", sender=os.getenv('EMAIL'), recipients=[user_email])
-                  msg.body = f"Dear {username},\nYou will receive your order in two to three days... \n\nRegards,\nPerfect-Perfume"
-                  mail.send(msg)
+               cursor.execute("SELECT email from customerdetails where username = %s",(username,))
+               email = cursor.fetchone()
+               email = email[0]
+               msg = Message("Order placed Successfully - Perfect Perfume",sender = os.getenv('EMAIL'),recipients = [email])
+               msg.body = f"Dear {username},\nYou will receive your order in two to three days... \n\nRegards,\nPerfect-Perfume"
+               mail.send(msg)
                return redirect(url_for('confirmation',product_id=product_id,quantity=quantity))
          return render_template('Buy_now.html',product_id=product_id)
       finally:
@@ -423,8 +349,10 @@ def Buy_cart():
       conn = get_db_connection()
       cursor = conn.cursor()
       try:
-         user_id = get_current_user_id()
+         cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+         user_id = cursor.fetchone()
          if user_id:
+            user_id = user_id[0]
             if request.method == "POST":
                plot_no = request.form.get('plotno')
                street_address = request.form.get('street')
@@ -434,20 +362,13 @@ def Buy_cart():
                country = request.form.get('country')
                if not plot_no or not street_address or not area or not state or not pincode or not country:
                   return "All fields are required!",400
-               # insert/update address and create orders for cart items
                address(plot_no,street_address,area,state,pincode,country)
-
-               # fetch email (or use session email if available)
-               if 'email' in session and session['email']:
-                  user_email = session['email']
-               else:
-                  cursor.execute("SELECT email FROM customerdetails WHERE username=%s", (username,))
-                  row = cursor.fetchone()
-                  user_email = row[0] if row else None
-               if user_email:
-                  msg = Message("Order placed Successfully - Perfect Perfume", sender=os.getenv('EMAIL'), recipients=[user_email])
-                  msg.body = f"Dear {username},\nYou will receive your order in two to three days... \n\nRegards,\nPerfect-Perfume"
-                  mail.send(msg)
+               cursor.execute("SELECT email from customerdetails where username = %s",(username,))
+               email = cursor.fetchone()
+               email = email[0]
+               msg = Message("Order placed Successfully - Perfect Perfume",sender = os.getenv('EMAIL'),recipients = [email])
+               msg.body = f"Dear {username},\nYou will receive your order in two to three days... \n\nRegards,\nPerfect-Perfume"
+               mail.send(msg)
                return redirect(url_for('confirmation_cart'))
             return render_template('Buy_cart.html') 
       finally:
@@ -462,8 +383,11 @@ def address(plot_no,street_address,area,state,pincode,country):
       conn = get_db_connection()
       cursor = conn.cursor()
       try:
-         user_id = get_current_user_id()
+         cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+         user_id = cursor.fetchone()
+
          if user_id:
+            user_id = user_id[0]
             cursor.execute("""INSERT INTO address(user_id,plot_no,street_address,area,country,state,pincode) 
                                  values(%s,%s,%s,%s,%s,%s,%s) 
                                  on duplicate key update 
@@ -494,8 +418,10 @@ def confirmation_cart():
       username = session.get('username')
       conn = get_db_connection()
       cursor = conn.cursor()
-      user_id = get_current_user_id()
+      cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+      user_id = cursor.fetchone()
       if user_id:
+         user_id = user_id[0]
          cursor.execute("""SELECT p.product_name,p.Ingredients,p.price,c.quantity
                               FROM cart c
                               JOIN product p ON  p.product_id = c.product_id
@@ -523,19 +449,17 @@ def confirmation(product_id,quantity):
       conn = get_db_connection()
       cursor = conn.cursor()
       try:
-         cursor.execute("SELECT product_name,Ingredients,price from product where product_id = %s", (product_id,))
-         product_details = cursor.fetchone()
+         cursor.execute("SELECT product_name,Ingredients,price from product where product_id = %s",(product_id,))
+         product_details = cursor.fetchall()
          if product_details:
-            product_name, Ingredients, price = product_details
-            cursor.execute("""SELECT address.plot_no, address.street_address, address.area, address.state, address.country, address.pincode 
+            product_name,Ingredients,price=product_details[0]
+            cursor.execute("""SELECT address.plot_no, address.street_address, address.area,address.state,address.country,address.pincode 
                             FROM address
                             JOIN customerdetails ON address.user_id = customerdetails.user_id
-                            WHERE customerdetails.username = %s
-                            LIMIT 1""", (username,))
-            address_details = cursor.fetchone()
+                            where customerdetails.username = %s""",(username,))
+            address_details = cursor.fetchall()
             if address_details:
-               # safely join only non-empty parts
-               address = ",".join([str(part) for part in address_details if part])
+               address = f"{address_details[0][0]},{address_details[0][1]},{address_details[0][2]},{address_details[0][3]},{address_details[0][4]},{address_details[0][5]}"
             else:
                address = "Not available"
             return render_template('confirmation.html',product_id=product_id,product_name=product_name,Ingredients=Ingredients,price=price,address=address,quantity=quantity)
@@ -555,8 +479,10 @@ def Delete_cart():
       username = session.get('username')
       conn = get_db_connection()
       cursor = conn.cursor()
-      user_id = get_current_user_id()
+      cursor.execute("SELECT user_id from customerdetails where username = %s",(username,))
+      user_id = cursor.fetchone()
       if user_id:
+         user_id = user_id[0]
          cursor.execute("DELETE FROM cart WHERE user_id = %s", (user_id,))
          conn.commit()
          return redirect(url_for('index'))
