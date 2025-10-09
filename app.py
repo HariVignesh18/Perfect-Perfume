@@ -1,22 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from flask_dance.contrib.google import make_google_blueprint, google
 import mysql.connector
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
-from dotenv import load_dotenv
 import os
 import pyotp
 import time
-load_dotenv()  
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 app = Flask(__name__)
-google_bp = make_google_blueprint(
-    client_id=os.getenv('GOOGLE_OAUTH_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_OAUTH_CLIENT_SECRET'),
-    redirect_to="google_login",
-    scope=["profile", "email"]
-)
-app.register_blueprint(google_bp, url_prefix="/login")
 app.secret_key = os.getenv('APP_SECRET')
 
 app.config["MAIL_SERVER"] = 'smtp.gmail.com'
@@ -54,41 +44,6 @@ def send_otp(email, otp):
 @app.route('/', methods=['POST', 'GET'])
 def index():
     return render_template('index.html')
-
-@app.route("/google-login")
-def google_login():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
-
-    resp = google.get("/oauth2/v2/userinfo")
-    if not resp.ok:
-        flash("Failed to fetch user info from Google.", "danger")
-        return redirect(url_for("login"))
-
-    user_info = resp.json()
-    email = user_info["email"]
-    username = user_info.get("name", email.split("@")[0])
-
-    # Check if user exists in DB
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM customerdetails WHERE email=%s", (email,))
-    user = cursor.fetchone()
-
-    if not user:
-        # If new user, insert into DB
-        cursor.execute("INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
-                       (username, email, None))
-        conn.commit()
-
-    cursor.close()
-    conn.close()
-
-    # Log the user in
-    session['username'] = username
-    session['user_status'] = "logged_in"
-    flash(f"Logged in as {username} via Google!", "success")
-    return redirect(url_for("index"))
 
 @app.route('/Registration', methods=['GET', 'POST'])
 def Registration():
