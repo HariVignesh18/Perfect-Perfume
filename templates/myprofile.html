@@ -83,12 +83,12 @@
         <i class="fas fa-user profile-icon"></i>
         <table>
             <tr>
-                <td><label for="username">Username:</label></td> 
-                <td>{{user[1]}}</td>
+                <td><label for="username">Username:</label></td>
+                <td>{{ user.username }}</td>
             </tr>
             <tr>
-                <td><label for="email">Email:</label></td> 
-                <td>{{user[3]}} </td>
+                <td><label for="email">Email:</label></td>
+                <td>{{ user.email }}</td>
             </tr>
         </table>
         <a href="{{url_for('view_cart')}}" class="btn-black me-2">Your cart</a>
