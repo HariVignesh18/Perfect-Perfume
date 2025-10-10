@@ -8,7 +8,7 @@ import os
 import pyotp
 import time
 load_dotenv()  
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '0'
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = os.getenv('OIT')
 app = Flask(__name__)
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
