@@ -76,6 +76,41 @@
                 background-color: #606060;
                 transform: scale(1.05);
             }
+            .btn-danger {
+                background-color: #dc3545;
+                color: #ffffff;
+                text-decoration: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                font-size: 16px;
+                border: none;
+                transition: background-color 0.3s ease, transform 0.3s ease;
+            }
+            .btn-danger:hover {
+                background-color: #c82333;
+                transform: scale(1.05);
+            }
+            .delete-section {
+                margin-top: 30px;
+                padding-top: 20px;
+                border-top: 1px solid #eee;
+            }
+            .delete-section h5 {
+                color: #dc3545;
+                margin-bottom: 15px;
+            }
+            .delete-section p {
+                color: #666;
+                font-size: 14px;
+                margin-bottom: 15px;
+            }
+            .confirmation-input {
+                width: 200px;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-right: 10px;
+            }
         </style>
     </head>
 <body>
@@ -92,8 +127,41 @@
             </tr>
         </table>
         <a href="{{url_for('view_cart')}}" class="btn-black me-2">Your cart</a>
-        <a href="{{url_for('index')}}" class="btn-grey">Back to home</a>
+        <a href="{{url_for('index')}}" class="btn-grey me-2">Back to home</a>
+        <a href="{{url_for('logout')}}" class="btn-grey">Logout</a>
+        
+        <!-- Delete Account Section -->
+        <div class="delete-section">
+            <h5><i class="fas fa-exclamation-triangle"></i> Danger Zone</h5>
+            <p>Once you delete your account, there is no going back. This will permanently delete:</p>
+            <ul style="text-align: left; color: #666; font-size: 14px; margin: 10px 0;">
+                <li>Your profile and account information</li>
+                <li>All your cart items</li>
+                <li>Your order history</li>
+                <li>Your saved addresses</li>
+            </ul>
+            <form method="POST" action="{{url_for('delete_account')}}" onsubmit="return confirmDelete()">
+                <p style="margin-bottom: 10px;">
+                    <strong>Type "delete" to confirm:</strong>
+                </p>
+                <input type="text" name="confirmation" class="confirmation-input" placeholder="Type 'delete'" required>
+                <button type="submit" class="btn-danger">
+                    <i class="fas fa-trash"></i> Delete Account
+                </button>
+            </form>
+        </div>
     </div>
+    
+    <script>
+        function confirmDelete() {
+            const confirmation = document.querySelector('input[name="confirmation"]').value.toLowerCase();
+            if (confirmation !== 'delete') {
+                alert('You must type "delete" exactly to confirm account deletion.');
+                return false;
+            }
+            return confirm('Are you absolutely sure you want to delete your account? This action cannot be undone!');
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

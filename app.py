@@ -103,39 +103,112 @@ def google_login():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)  # fetch as dict
 
-    # Check if user exists by email
-    cursor.execute("SELECT * FROM customerdetails WHERE email=%s", (email,))
-    user = cursor.fetchone()
-
-    if not user:
-        # Insert new Google user
-        cursor.execute(
-            "INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
-            (username, email, None)
-        )
-        conn.commit()
-        cursor.execute("SELECT * FROM customerdetails WHERE email=%s", (email,))
+    try:
+        # Check if user exists by email - use LIMIT 1 to get the first match
+        # If there are duplicates, we'll use the first one (oldest user_id)
+        cursor.execute("SELECT * FROM customerdetails WHERE email=%s ORDER BY user_id LIMIT 1", (email,))
         user = cursor.fetchone()
 
-    # Use email in session to uniquely identify OAuth users
-    session['username'] = user['username']
-    session['email'] = user['email']
-   # store numeric id to avoid ambiguity when multiple rows share the same email
-    session['user_id'] = user.get('user_id')
-    session['user_status'] = "logged_in"
+        if user:
+            # User exists - link Google OAuth to existing account
+            # Update username if it's different (Google might have a better name)
+            # But first check if the new username is available
+            if user['username'] != username:
+                cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s AND user_id != %s", 
+                             (username, user['user_id']))
+                username_taken = cursor.fetchone()
+                
+                if not username_taken:
+                    # Username is available, update it
+                    cursor.execute("UPDATE customerdetails SET username=%s WHERE user_id=%s", 
+                                 (username, user['user_id']))
+                    conn.commit()
+                else:
+                    # Username is taken, keep the existing username
+                    username = user['username']
+            
+            flash(f"Welcome back! Linked your Google account to existing profile.", "success")
+        else:
+            # User doesn't exist - check if username is available before creating
+            cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+            username_taken = cursor.fetchone()
+            
+            if username_taken:
+                # Username is taken, append email prefix to make it unique
+                original_username = username
+                username = f"{original_username}_{email.split('@')[0]}"
+                
+                # Double-check the new username is available
+                cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+                if cursor.fetchone():
+                    # If still taken, append timestamp
+                    username = f"{original_username}_{int(time.time())}"
+            
+            # Create new account
+            cursor.execute(
+                "INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
+                (username, email, None)
+            )
+            conn.commit()
+            
+            # Get the newly created user
+            cursor.execute("SELECT * FROM customerdetails WHERE email=%s ORDER BY user_id LIMIT 1", (email,))
+            user = cursor.fetchone()
+            
+            if username_taken:
+                flash(f"Account created! Username adjusted to '{username}' as '{original_username}' was taken.", "info")
+            else:
+                flash(f"Account created and logged in via Google!", "success")
 
-    cursor.close()
-    conn.close()
+        # Set session data
+        session['username'] = user['username']
+        session['email'] = user['email']
+        session['user_id'] = user.get('user_id')
+        session['user_status'] = "logged_in"
 
-    flash(f"Logged in as {username} via Google!", "success")
+    except Exception as e:
+        flash(f"Error during Google login: {str(e)}", "danger")
+        return redirect(url_for("login"))
+    finally:
+        cursor.close()
+        conn.close()
+
     return redirect(url_for("index"))
 
 @app.route('/Registration', methods=['GET', 'POST'])
 def Registration():
     if request.method == 'POST':
-        session['username'] = request.form.get('username')
-        session['password'] = generate_password_hash(request.form.get('password'))
-        session['email'] = request.form.get('email')
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        # Basic validation
+        if not username or not email or not password:
+            flash("All fields are required.", "danger")
+            return render_template('Registration.html')
+        
+        # Check if username already exists
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+            if cursor.fetchone():
+                flash("Username already taken. Please choose a different username.", "warning")
+                return render_template('Registration.html')
+            
+            # Check if email already exists
+            cursor.execute("SELECT user_id FROM customerdetails WHERE email=%s", (email,))
+            if cursor.fetchone():
+                flash("An account with this email already exists. Please login instead.", "warning")
+                return render_template('Registration.html')
+        finally:
+            cursor.close()
+            conn.close()
+        
+        # Store in session for OTP verification
+        session['username'] = username
+        session['password'] = generate_password_hash(password)
+        session['email'] = email
 
         otp_secret = generate_otp_secret()
         session['otp_secret'] = otp_secret
@@ -190,13 +263,29 @@ def verify_otp():
       conn = get_db_connection()
       cursor = conn.cursor()
       try:
+         # Check if email already exists before creating account
+         cursor.execute("SELECT user_id FROM customerdetails WHERE email=%s", (session.get('email'),))
+         existing_email = cursor.fetchone()
+         
+         if existing_email:
+            flash("An account with this email already exists. Please login instead.", "warning")
+            return redirect(url_for('login'))
+
+         # Check if username already exists before creating account
+         cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (session.get('username'),))
+         existing_username = cursor.fetchone()
+         
+         if existing_username:
+            flash("Username already taken. Please choose a different username.", "warning")
+            return redirect(url_for('Registration'))
+
          # send welcome email (best-effort)
          try:
             msg = Message("Welcome to Perfect Perfume!", sender=os.getenv('EMAIL'), recipients=[session.get("email")])
             msg.body = f"""
 Dear {session.get('username')},
 
-We're thrilled to have you as part of our fragrance family. Explore our exquisite collection of perfumes crafted to enchant your senses. Whether you’re seeking a signature scent or a gift for someone special, we have something perfect for you!
+We're thrilled to have you as part of our fragrance family. Explore our exquisite collection of perfumes crafted to enchant your senses. Whether you're seeking a signature scent or a gift for someone special, we have something perfect for you!
 
 ✨ Enjoy exclusive discounts and special offers as a valued member.  
 🚚 Free delivery on your first order!  
@@ -267,26 +356,35 @@ def login():
          flash("Invalid username or password.", "danger")
 
    return render_template('login.html')
-@app.route('/view_cart',methods=['GET'])
+@app.route('/view_cart', methods=['GET'])
 def view_cart():
-   if 'user_status' in session and (session['user_status']=="Registered" or session['user_status']=="logged_in"):
-      username = session.get('username')
-      user_id = get_current_user_id()
-      if user_id:
-         cursor.execute("""SELECT p.product_name,p.target_gender,p.item_form,p.Ingredients,p.special_features,p.item_volume,p.country,c.quantity,(p.price*c.quantity) as price 
-                        from cart c 
-                        join product p on p.product_id = c.product_id 
-                        where c.user_id = %s
-                        order by c.added_time DESC""",(user_id,))
-         cart_items = cursor.fetchall()
-         total_price_cart=0
-         for item in cart_items:
-            total_price_cart += item[8] 
-         cursor.close()
-         conn.close()
-         return render_template('cart.html',cart_items = cart_items, grand_total = total_price_cart)
-   else:
-      return redirect(url_for('login'))
+    if 'user_status' in session and session['user_status'] in ["Registered", "logged_in"]:
+        user_id = get_current_user_id()
+        if user_id:
+            conn = get_db_connection()   # <-- create connection
+            cursor = conn.cursor()       # <-- create cursor
+
+            cursor.execute("""
+                SELECT p.product_id, p.product_name, p.target_gender, p.item_form, p.Ingredients, 
+                       p.special_features, p.item_volume, p.country, c.quantity, 
+                       (p.price * c.quantity) as price
+                FROM cart c
+                JOIN product p ON p.product_id = c.product_id
+                WHERE c.user_id = %s
+                ORDER BY c.added_time DESC
+            """, (user_id,))
+            
+            cart_items = cursor.fetchall()
+
+            total_price_cart = sum(item[9] for item in cart_items)  # sum price column (now index 9)
+
+            cursor.close()
+            conn.close()
+
+            return render_template('cart.html', cart_items=cart_items, grand_total=total_price_cart)
+
+    return redirect(url_for('login'))
+
 
 @app.route('/myprofile',methods=['POST','GET'])
 def myprofile():
@@ -549,6 +647,41 @@ def confirmation(product_id,quantity):
          conn.close()
 
     
+@app.route('/delete_cart_item/<int:product_id>', methods=['POST'])
+def delete_cart_item(product_id):
+    if 'user_status' not in session or session['user_status'] not in ["Registered", "logged_in"]:
+        flash("You must be logged in to modify your cart.", "danger")
+        return redirect(url_for('login'))
+    
+    user_id = get_current_user_id()
+    if not user_id:
+        flash("User not found.", "danger")
+        return redirect(url_for('login'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Check if the item exists in user's cart
+        cursor.execute("SELECT product_id FROM cart WHERE user_id = %s AND product_id = %s", (user_id, product_id))
+        if not cursor.fetchone():
+            flash("Item not found in your cart.", "warning")
+            return redirect(url_for('view_cart'))
+        
+        # Delete the specific item from cart
+        cursor.execute("DELETE FROM cart WHERE user_id = %s AND product_id = %s", (user_id, product_id))
+        conn.commit()
+        
+        flash("Item removed from cart successfully.", "success")
+        
+    except Exception as e:
+        flash(f"Error removing item from cart: {str(e)}", "danger")
+    finally:
+        cursor.close()
+        conn.close()
+    
+    return redirect(url_for('view_cart'))
+
 @app.route('/Delete_cart',methods=['POST','GET'])
 def Delete_cart():
    if 'user_status' in session and (session['user_status'] == "Registered" or session['user_status'] == "logged_in"):
@@ -559,7 +692,8 @@ def Delete_cart():
       if user_id:
          cursor.execute("DELETE FROM cart WHERE user_id = %s", (user_id,))
          conn.commit()
-         return redirect(url_for('index'))
+         flash("Cart emptied successfully.", "success")
+         return redirect(url_for('view_cart'))
       cursor.close()
       conn.close()
       if not user_id:
@@ -567,6 +701,61 @@ def Delete_cart():
    else:
       return redirect(url_for('login'))
    
+@app.route('/delete_account', methods=['POST'])
+def delete_account():
+    if 'user_status' not in session or session['user_status'] not in ['Registered', 'logged_in']:
+        flash("You must be logged in to delete your account.", "danger")
+        return redirect(url_for('login'))
+    
+    user_id = get_current_user_id()
+    if not user_id:
+        flash("User not found.", "danger")
+        return redirect(url_for('login'))
+    
+    # Get confirmation from form
+    confirmation = request.form.get('confirmation', '').strip().lower()
+    if confirmation != 'delete':
+        flash("Account deletion cancelled. You must type 'delete' to confirm.", "warning")
+        return redirect(url_for('myprofile'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Start transaction
+        conn.start_transaction()
+        
+        # Delete user's data in order (respecting foreign key constraints)
+        # 1. Delete cart items
+        cursor.execute("DELETE FROM cart WHERE user_id = %s", (user_id,))
+        
+        # 2. Delete orders
+        cursor.execute("DELETE FROM orders WHERE user_id = %s", (user_id,))
+        
+        # 3. Delete address
+        cursor.execute("DELETE FROM address WHERE user_id = %s", (user_id,))
+        
+        # 4. Finally delete user account
+        cursor.execute("DELETE FROM customerdetails WHERE user_id = %s", (user_id,))
+        
+        # Commit transaction
+        conn.commit()
+        
+        # Clear session
+        session.clear()
+        
+        flash("Your account has been permanently deleted. We're sorry to see you go!", "info")
+        return redirect(url_for('index'))
+        
+    except Exception as e:
+        # Rollback on error
+        conn.rollback()
+        flash(f"Error deleting account: {str(e)}", "danger")
+        return redirect(url_for('myprofile'))
+    finally:
+        cursor.close()
+        conn.close()
+
 @app.route('/logout')
 def logout():
     session.clear()

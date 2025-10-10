@@ -80,6 +80,38 @@
             background-color: #555;
             transform: translateY(-3px);
         }
+        
+        .btn-delete {
+            background-color: #dc3545;
+            color: #fff;
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+        
+        .btn-delete-form {
+            display: inline;
+        }
+
+        /* New: make table horizontally scrollable within box */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+        }
+        /* Slightly tighter cells so action column fits */
+        table.compact th,
+        table.compact td {
+            padding: 10px 8px;
+        }
 
         @media (max-width: 768px) {
             table {
@@ -100,7 +132,8 @@
         <a href="{{ url_for('index') }}">Return to home</a>
         <br>
         {% if cart_items %}
-        <table>
+        <div class="table-wrapper">
+        <table class="compact">
             <tr>
                 <th>Product Name</th>
                 <th>Target Gender</th>
@@ -111,10 +144,10 @@
                 <th>Country</th>
                 <th>Quantity</th>
                 <th>Price</th>
+                <th>Action</th>
             </tr>
             {% for item in cart_items %}
             <tr>
-                <td>{{ item[0] }}</td>
                 <td>{{ item[1] }}</td>
                 <td>{{ item[2] }}</td>
                 <td>{{ item[3] }}</td>
@@ -123,9 +156,16 @@
                 <td>{{ item[6] }}</td>
                 <td>{{ item[7] }}</td>
                 <td>{{ item[8] }}</td>
+                <td>₹{{ item[9] }}</td>
+                <td>
+                    <form method="POST" action="{{ url_for('delete_cart_item', product_id=item[0]) }}" class="btn-delete-form" onsubmit="return confirm('Are you sure you want to remove this item from your cart?')">
+                        <button type="submit" class="btn-delete">Remove</button>
+                    </form>
+                </td>
             </tr>
             {% endfor %}
         </table>
+        </div>
         <h5>Total price: ₹ {{ grand_total }}</h5>
         <a href="{{ url_for('Delete_cart') }}" style="background-color:red;">Empty cart</a>
         <br>
