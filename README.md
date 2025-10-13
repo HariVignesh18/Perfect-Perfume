@@ -1,132 +1,164 @@
-# PERFECT PERFUME
+# 🌸 Perfect Perfume
 
-A scalable e-commerce platform for direct perfume sales, focusing on backend system integration and user interface optimization. Implemented a dynamic cart system to enhance the shopping experience, ensuring smooth transactions and user interactions with an order confirmation email system. Now hosted on **Vercel** for seamless deployment.
-
----
-
-## Technologies Used
-
-### Frontend:
-- HTML
-- CSS
-- Bootstrap
-
-### Backend:
-- Python
-- Flask
-- MySQL
-- werkzeug.security
-- Flask-Mail (for email notifications)
-
-### Programming Concepts:
-- Object-Oriented Programming
-- Data Structures & Algorithms (Stack, Sorting)
-
-### Deployment:
-- Hosted on **Vercel** with environment variables configured for secure access.
+**Perfect Perfume** is an elegant e-commerce web application built using **Flask**, featuring secure user authentication (manual + Google OAuth), OTP-based registration, shopping cart management, order tracking, and email notifications — all designed for a seamless perfume shopping experience.
 
 ---
 
-## HOW TO GET STARTED:
+## 🚀 Live Demo
 
-### Step 1: Clone the repository
-Clone the repository to your local environment using:
+🔗 **Website:** [https://perfect-perfume-three.vercel.app](https://perfect-perfume-three.vercel.app)
+💻 **Repository:** [https://github.com/HariVignesh18/Perfect-Perfume](https://github.com/HariVignesh18/Perfect-Perfume)
+
+---
+
+## 🧰 Tech Stack
+
+| Component                  | Technology                                                     |
+| -------------------------- | -------------------------------------------------------------- |
+| **Frontend**               | HTML, CSS (Bootstrap 5), Jinja2 Templates                      |
+| **Backend**                | Flask (Python)                                                 |
+| **Database**               | MySQL                                                          |
+| **Authentication**         | Google OAuth (Flask-Dance), Manual login with password hashing |
+| **Email Service**          | Flask-Mail (SMTP via Gmail)                                    |
+| **OTP Verification**       | PyOTP                                                          |
+| **Hosting**                | Vercel                                                         |
+| **Environment Management** | python-dotenv                                                  |
+
+---
+
+## ✨ Features
+
+### 👤 User Management
+
+* Secure registration with OTP verification via email
+* Passwords stored using `werkzeug.security` hashing
+* Google OAuth login via Flask-Dance
+* Session-based authentication
+* View and delete profile functionality
+
+### 🛍️ Shopping Experience
+
+* Add products to cart
+* Modify or delete cart items
+* “Buy Now” and “Buy from Cart” options
+* Address management (auto-update on next orders)
+* Automatic email confirmation on order placement
+
+### 💌 Email Notifications
+
+* OTP email during registration
+* Welcome email after account creation
+* Order confirmation emails
+
+### 🔒 Security
+
+* Encrypted passwords (SHA256 via Werkzeug)
+* Environment variables for secrets & credentials
+* Transaction-safe account deletion (with rollback on error)
+
+---
+
+## 🧩 Project Structure
+
+```
+Perfect-Perfume/
+│
+├── app.py                 # Main Flask application
+├── templates/             # HTML templates (Jinja2)
+│   ├── index.html
+│   ├── Registration.html
+│   ├── login.html
+│   ├── cart.html
+│   ├── myprofile.html
+│   ├── confirmation.html
+│   └── ...
+├── static/                # CSS, JS, images
+├── .env                   # Environment variables
+├── requirements.txt        # Python dependencies
+└── README.md               # Documentation
+```
+
+---
+
+## ⚙️ Setup Instructions
+
+### 1️⃣ Clone the Repository
+
 ```bash
- git clone https://github.com/yourusername/perfect-perfume.git
+git clone https://github.com/HariVignesh18/Perfect-Perfume.git
+cd Perfect-Perfume
 ```
 
-### Step 2: Set up Environment Variables
-Create a `.env` file and add the following configurations:
-```env
-APP_SECRET=your_secret_key
-EMAIL=your_email
-EMAIL_PWD=your_app_password
-DB_HOST=your_db_hostname
-DB_USERNAME=your_db_username
-DB_PASSWORD=your_db_password
-DB_DBNAME=your_db_name
-MAILPORT=your_mail_port
+### 2️⃣ Create and Activate Virtual Environment
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
 ```
 
-### Step 3: Set Up MySQL Database
-Open MySQL Workbench and execute the following SQL commands:
+### 3️⃣ Install Dependencies
 
-```sql
-CREATE DATABASE perfume_company;
-USE perfume_company;
-
-CREATE TABLE customerdetails (
-    user_id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50),
-    password VARCHAR(200),
-    email VARCHAR(50)
-);
-
-CREATE TABLE product (
-    product_id INT AUTO_INCREMENT PRIMARY KEY,
-    product_name VARCHAR(50),
-    target_gender VARCHAR(10),
-    item_form VARCHAR(10),
-    ingredients VARCHAR(50),
-    special_features VARCHAR(50),
-    item_volume INT,
-    country VARCHAR(20),
-    price INT
-);
-
-INSERT INTO product VALUES
-(1, 'Floral Perfume', 'Unisex', 'Spray', 'Jasmine', 'Natural Ingredients', 60, 'India', 599),
-(2, 'Woody Perfume', 'Unisex', 'Spray', 'Cedarwood', 'Long-lasting', 60, 'India', 699),
-(3, 'Citrus Perfume', 'Unisex', 'Spray', 'Essential Oils', 'Fresh Fragrance', 60, 'India', 799);
-(4,'Oriental Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599),
-(5,'Fresh Aquatic Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599),
-(6,'Gourmand Perfume','unisex','bar','honey','Natural_ingredients',60,'India',599);
-
-CREATE TABLE address (
-    address_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    plot_no INT NOT NULL,
-    street_address VARCHAR(50) NOT NULL,
-    area VARCHAR(50) NOT NULL,
-    state VARCHAR(50) NOT NULL,
-    pincode INT NOT NULL,
-    country VARCHAR(20) NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES customerdetails(user_id)
-);
-
-CREATE TABLE orders (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    product_id INT,
-    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    quantity INT,
-    address VARCHAR(100),
-    FOREIGN KEY (user_id) REFERENCES customerdetails(user_id),
-    FOREIGN KEY (product_id) REFERENCES product(product_id)
-);
-
-CREATE TABLE cart (
-    cart_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    product_id INT,
-    quantity INT DEFAULT 1,
-    added_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES customerdetails(user_id),
-    FOREIGN KEY (product_id) REFERENCES product(product_id)
-);
-```
-
-### Step 4: Install Dependencies
-Navigate to the project directory and install the required dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Step 5: Run the Application
-Start the Flask application using:
+### 4️⃣ Configure Environment Variables
+
+Create a `.env` file in the root directory and add:
+
+```env
+DB_HOST=localhost
+DB_USERNAME=your_mysql_user
+DB_PASSWORD=your_mysql_password
+DB_DBNAME=perfect_perfume
+
+EMAIL=youremail@gmail.com
+EMAIL_PWD=your_app_password
+MAILPORT=465
+
+APP_SECRET=your_flask_secret_key
+
+GOOGLE_OAUTH_CLIENT_ID=your_google_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_client_secret
+
+OIT=1
+```
+
+### 5️⃣ Run the App
+
 ```bash
 python app.py
 ```
 
+Visit `http://127.0.0.1:5000` in your browser.
 
+---
 
+## 📦 Database Schema (MySQL)
+
+Tables used:
+
+* **customerdetails** (user_id, username, email, password)
+* **product** (product_id, product_name, price, category, etc.)
+* **cart** (user_id, product_id, quantity, added_time)
+* **address** (user_id, plot_no, street_address, area, country, state, pincode)
+* **orders** (order_id, user_id, product_id, quantity, address)
+
+---
+
+## 🧠 Key Functional Highlights
+
+| Feature            | Description                                            |
+| ------------------ | ------------------------------------------------------ |
+| OTP Authentication | Time-based OTP valid for 5 minutes                     |
+| Session Tracking   | User info cached with `user_id`, `email`, and `status` |
+| Account Deletion   | Cascading delete (cart → orders → address → user)      |
+| Email Integration  | Uses Flask-Mail for SMTP Gmail delivery                |
+| Google OAuth       | Automatically links or creates user accounts           |
+
+---
+
+## 🧾 License
+
+This project is for educational and demonstration purposes.
+© 2025 Hari Vignesh B. All Rights Reserved.
