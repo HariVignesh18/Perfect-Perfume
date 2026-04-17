@@ -12,9 +12,11 @@ from flask import request, jsonify
 import os
 import pyotp
 import time
+from werkzeug.middleware.proxy_fix import ProxyFix
 load_dotenv()  
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = os.getenv('OIT', '1')
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Read frontend URL from env — defaults to localhost for dev
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
