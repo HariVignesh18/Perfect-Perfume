@@ -1,26 +1,58 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from flask_dance.contrib.google import make_google_blueprint, google
+from flask_dance.contrib.google import make_google_blueprint
+from flask_dance.contrib.google import google  # Flask UI proxy
+from oauthlib.oauth2 import TokenExpiredError
+from flask_cors import CORS
 import mysql.connector
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from flask import request, jsonify
 # from flask_wtf.csrf import CSRFProtect
 import os
 import pyotp
 import time
 load_dotenv()  
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = os.getenv('OIT')
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = os.getenv('OIT', '1')
 app = Flask(__name__)
+
+# Read frontend URL from env — defaults to localhost for dev
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+FLASK_ENV = os.getenv('FLASK_ENV', 'development')
+
+CORS(app, supports_credentials=True, origins=[FRONTEND_URL])
+
+# Production: Secure cookies over real HTTPS (needed for cross-origin React)
+# Development: Default cookies over plain HTTP (so v1 Flask/Jinja OAuth works)
+if FLASK_ENV == 'production':
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 # csrf = CSRFProtect(app)
+# Blueprint for Flask UI (localhost:5000)
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
-    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+    scope=[
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile"
+    ],
     redirect_to="google_login",
-    reprompt_consent=True  # forces account selection
+    reprompt_consent=True
 )
-
+google_bp.name = "google"
 app.register_blueprint(google_bp, url_prefix="/login")
+
+# Blueprint for React (localhost:5173)
+google_react_bp = make_google_blueprint(
+    client_id=os.getenv("GOOGLE_OAUTH_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+    scope=["openid", "https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+    redirect_to="react_google_login",
+)
+google_react_bp.name = "google_react"
+app.register_blueprint(google_react_bp, url_prefix="/react-login")
 app.secret_key = os.getenv('APP_SECRET','supersecret')
 
 app.config["MAIL_SERVER"] = 'smtp.gmail.com'
@@ -88,13 +120,58 @@ def send_otp(email, otp):
 def index():
     return render_template('index.html')
 
+from flask import redirect, url_for, session, request, flash
+from oauthlib.oauth2 import TokenExpiredError
+import time
+
+def _handle_google_user(email, username):
+    """Upsert Google user into DB and set session."""
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT * FROM customerdetails WHERE email=%s ORDER BY user_id LIMIT 1", (email,))
+        user = cursor.fetchone()
+
+        if user:
+            if user['username'] != username:
+                cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s AND user_id != %s", (username, user['user_id']))
+                if not cursor.fetchone():
+                    cursor.execute("UPDATE customerdetails SET username=%s WHERE user_id=%s", (username, user['user_id']))
+                    conn.commit()
+                else:
+                    username = user['username']
+        else:
+            cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+            if cursor.fetchone():
+                base = username
+                username = f"{base}_{email.split('@')[0]}"
+                cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+                if cursor.fetchone():
+                    username = f"{base}_{int(time.time())}"
+            cursor.execute("INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)", (username, email, None))
+            conn.commit()
+            cursor.execute("SELECT * FROM customerdetails WHERE email=%s ORDER BY user_id LIMIT 1", (email,))
+            user = cursor.fetchone()
+
+        session.clear()
+        session['username'] = user['username']
+        session['email'] = user['email']
+        session['user_id'] = user.get('user_id')
+        session['user_status'] = "logged_in"
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route("/google-login")
 def google_login():
-    if not google.authorized:
+    bp = app.blueprints.get("google")
+    
+    if not bp or not bp.session.token:
         return redirect(url_for("google.login"))
 
-    resp = google.get("/oauth2/v2/userinfo")
-    if not resp.ok:
+    resp = bp.session.get("/oauth2/v2/userinfo")
+    if not resp or not resp.ok:
         flash("Failed to fetch user info from Google.", "danger")
         return redirect(url_for("login"))
 
@@ -176,6 +253,29 @@ def google_login():
         conn.close()
 
     return redirect(url_for("index"))
+
+
+
+
+@app.route("/react-google-login")
+def react_google_login():
+    bp = app.blueprints.get("google_react")
+    if not bp or not bp.session.token:
+        return redirect(url_for("google_react.login"))
+    try:
+        resp = bp.session.get("/oauth2/v2/userinfo")
+    except TokenExpiredError:
+        session.pop("google_react_oauth_token", None)
+        return redirect(url_for("google_react.login"))
+
+    if not resp or not resp.ok:
+        return redirect(url_for("google_react.login"))
+
+    user_info = resp.json()
+    email = user_info["email"]
+    username = user_info.get("name", email.split("@")[0])
+    _handle_google_user(email, username)
+    return redirect(f"{FRONTEND_URL}/auth/callback")
 
 @app.route('/Registration', methods=['GET', 'POST'])
 def Registration():
@@ -763,5 +863,384 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+
+
+
+@app.route('/api/register', methods=['POST'])
+def api_register():
+    data = request.json
+
+    username = data.get('username')
+    email = data.get('email')
+    password = data.get('password')
+
+    if not username or not email or not password:
+        return jsonify({"error": "All fields are required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Check username
+        cursor.execute("SELECT user_id FROM customerdetails WHERE username=%s", (username,))
+        if cursor.fetchone():
+            return jsonify({"error": "Username already exists"}), 400
+
+        # Check email
+        cursor.execute("SELECT user_id FROM customerdetails WHERE email=%s", (email,))
+        if cursor.fetchone():
+            return jsonify({"error": "Email already exists"}), 400
+
+        # Insert user
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
+
+        cursor.execute(
+            "INSERT INTO customerdetails (username, email, password) VALUES (%s, %s, %s)",
+            (username, email, hashed_password)
+        )
+        conn.commit()
+
+        return jsonify({"message": "User registered successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    data = request.json
+
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "All fields are required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM customerdetails WHERE username=%s", (username,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        if not user.get('password') or not check_password_hash(user.get('password'), password):
+            return jsonify({"error": "Invalid credentials"}), 401
+
+        # Store session (optional but useful)
+        session['user_id'] = user['user_id']
+        session['username'] = user['username']
+        session['email'] = user['email']
+        session['user_status'] = "logged_in"
+
+        return jsonify({
+            "message": "Login successful",
+            "user": {
+                "username": user['username'],
+                "email": user['email']
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/me', methods=['GET'])
+def api_me():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    return jsonify({
+        "username": session.get('username'),
+        "email": session.get('email')
+    }), 200
+
+@app.route('/api/cart', methods=['GET'])
+def get_cart():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT p.product_id as id, p.product_name as name, 
+               p.target_gender as gender, p.item_form as form,
+               p.Ingredients as ingredients, p.special_features as feature,
+               p.item_volume as volume, p.country,
+               c.quantity, p.price
+        FROM cart c
+        JOIN product p ON p.product_id = c.product_id
+        WHERE c.user_id = %s
+    """, (user_id,))
+
+    items = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify(items), 200
+
+@app.route('/api/cart/add', methods=['POST'])
+def add_to_cart_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.json
+    product_id = data.get('product_id')
+    quantity = data.get('quantity', 1)
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT quantity FROM cart WHERE user_id=%s AND product_id=%s",
+                   (user_id, product_id))
+    existing = cursor.fetchone()
+
+    if existing:
+        new_qty = existing[0] + quantity
+        cursor.execute("UPDATE cart SET quantity=%s WHERE user_id=%s AND product_id=%s",
+                       (new_qty, user_id, product_id))
+    else:
+        cursor.execute("INSERT INTO cart (user_id, product_id, quantity) VALUES (%s, %s, %s)",
+                       (user_id, product_id, quantity))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Added to cart"}), 200
+
+@app.route('/api/cart/remove/<int:product_id>', methods=['DELETE'])
+def remove_cart_item(product_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM cart WHERE user_id=%s AND product_id=%s",
+                   (user_id, product_id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Removed"}), 200
+
+@app.route('/api/cart/clear', methods=['DELETE'])
+def clear_cart():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM cart WHERE user_id=%s", (user_id,))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Cart cleared"}), 200
+
+@app.route('/api/order/cart', methods=['POST','OPTIONS'])
+def place_order_cart():
+    if request.method == 'OPTIONS':
+        return jsonify({"message": "OK"}), 200
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.json
+
+    plot_no = data.get('plotno')
+    street = data.get('street')
+    area = data.get('area')
+    state = data.get('state')
+    pincode = data.get('pincode')
+    country = data.get('country')
+
+    # ✅ Validation
+    if not all([plot_no, street, area, state, pincode, country]):
+        return jsonify({"error": "All fields required"}), 400
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # ✅ Save / Update Address
+        cursor.execute("""
+            INSERT INTO address(user_id, plot_no, street_address, area, country, state, pincode)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+            plot_no = VALUES(plot_no),
+            street_address = VALUES(street_address),
+            area = VALUES(area),
+            country = VALUES(country),
+            state = VALUES(state),
+            pincode = VALUES(pincode)
+        """, (user_id, plot_no, street, area, country, state, pincode))
+
+        address_str = f"{plot_no},{street},{area},{state},{pincode},{country}"
+
+        # ✅ Fetch cart items
+        cursor.execute("""
+            SELECT c.product_id, c.quantity, p.price
+            FROM cart c
+            JOIN product p ON p.product_id = c.product_id
+            WHERE c.user_id = %s
+        """, (user_id,))
+
+        cart_items = cursor.fetchall()
+
+        if not cart_items:
+            return jsonify({"error": "Cart is empty"}), 400
+
+        total_amount = 0
+
+        # ✅ Insert into orders
+        for item in cart_items:
+            product_id = item['product_id']
+            quantity = item['quantity']
+            price = item['price']
+
+            cursor.execute("""
+                INSERT INTO orders(user_id, product_id, quantity, address)
+                VALUES (%s, %s, %s, %s)
+            """, (user_id, product_id, quantity, address_str))
+
+            total_amount += price * quantity
+
+        # ✅ Clear cart
+        cursor.execute("DELETE FROM cart WHERE user_id = %s", (user_id,))
+
+        conn.commit()
+
+        return jsonify({
+            "message": "Order placed successfully",
+            "total": total_amount
+        }), 200
+
+    except Exception as e:
+        # ❗ VERY IMPORTANT
+        conn.rollback()
+        print("ERROR in /api/order/cart:", str(e))
+        return jsonify({"error": "Server error"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.route('/api/order/confirmation', methods=['GET'])
+def order_confirmation_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # ✅ Step 1: Get latest order timestamp
+        cursor.execute("""
+            SELECT order_date
+            FROM orders
+            WHERE user_id = %s
+            ORDER BY order_id DESC
+            LIMIT 1
+        """, (user_id,))
+
+        latest = cursor.fetchone()
+
+        if not latest:
+            return jsonify({"orders": []}), 200
+
+        latest_date = latest['order_date']
+
+        # ✅ Step 2: Fetch only that order batch
+        cursor.execute("""
+            SELECT p.product_name, p.Ingredients, p.price, o.quantity, o.address
+            FROM orders o
+            JOIN product p ON p.product_id = o.product_id
+            WHERE o.user_id = %s AND o.order_date = %s
+            ORDER BY o.order_id ASC
+        """, (user_id, latest_date))
+
+        orders = cursor.fetchall()
+
+        return jsonify({
+            "orders": orders
+        }), 200
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route('/api/order/buy-now', methods=['POST'])
+def buy_now_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.json
+    print("✅ BUY NOW API HIT")
+    product_id = data.get('product_id')
+    quantity = data.get('quantity', 1)
+
+    plot_no = data.get('plotno')
+    street = data.get('street')
+    area = data.get('area')
+    state = data.get('state')
+    pincode = data.get('pincode')
+    country = data.get('country')
+
+    if not all([product_id, plot_no, street, area, state, pincode, country]):
+        return jsonify({"error": "Missing fields"}), 400
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        address_str = f"{plot_no},{street},{area},{state},{pincode},{country}"
+
+        cursor.execute("""
+            INSERT INTO orders(user_id, product_id, quantity, address, order_date)
+            VALUES(%s,%s,%s,%s,NOW())
+        """, (user_id, product_id, quantity, address_str))
+
+        conn.commit()
+
+        return jsonify({"message": "Order placed"}), 200
+
+    except Exception as e:
+        print("🔥 BUY NOW ERROR:", e)   # 👈 THIS IS CRITICAL
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    if FLASK_ENV == 'production':
+        app.run(debug=False, ssl_context='adhoc')
+    else:
+        app.run(debug=True)
