@@ -72,13 +72,18 @@ app.config['MAIL_USE_SSL'] = True
 mail = Mail(app)
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USERNAME'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_DBNAME'),
-        buffered=True
-    )
+    try:
+        return mysql.connector.connect(
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USERNAME'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_DBNAME'),
+            buffered=True,
+            connection_timeout=10
+        )
+    except mysql.connector.Error as e:
+        print(f"DB connection error: {e}")
+        raise
 
 
 def get_current_user_id():
@@ -122,6 +127,10 @@ def send_otp(email, otp):
     except Exception as e:
         print("Error sending OTP:", e)
         return False
+
+@app.errorhandler(mysql.connector.Error)
+def handle_db_error(e):
+    return jsonify({"error": "Database connection failed", "detail": str(e)}), 500
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
