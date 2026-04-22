@@ -27,3 +27,4 @@ urllib3==2.4.0
 URLObject==3.0.0
 Werkzeug==3.0.1
 WTForms==3.2.1
+razorpay==2.0.1
