@@ -8,6 +8,7 @@ from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from flask import request, jsonify
+import razorpay
 # from flask_wtf.csrf import CSRFProtect
 import os
 import pyotp
@@ -23,7 +24,11 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 FLASK_ENV = os.getenv('FLASK_ENV', 'development')
 
 CORS(app, supports_credentials=True, origins=[FRONTEND_URL])
-
+def get_razorpay_client():
+    return razorpay.Client(auth=(
+        os.getenv("RAZORPAY_KEY_ID"),
+        os.getenv("RAZORPAY_KEY_SECRET")
+    ))
 # Production: Secure cookies over real HTTPS (needed for cross-origin React)
 # Development: Default cookies over plain HTTP (so v1 Flask/Jinja OAuth works)
 if FLASK_ENV == 'production':
@@ -865,7 +870,43 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/api/create-razorpay-order', methods=['POST'])
+def create_razorpay_order():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
 
+    data = request.json
+    amount = data.get("amount")
+
+    razorpay_client = get_razorpay_client()
+    print("KEY:", os.getenv("RAZORPAY_KEY_ID"))
+    print("SECRET:", os.getenv("RAZORPAY_KEY_SECRET"))
+    order = razorpay_client.order.create({
+        "amount": amount * 100,
+        "currency": "INR",
+        "payment_capture": 1
+    })
+
+    return jsonify(order)
+
+@app.route('/api/verify-payment', methods=['POST'])
+def verify_payment():
+    data = request.json
+
+    try:
+        razorpay_client = get_razorpay_client()
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': data['razorpay_order_id'],
+            'razorpay_payment_id': data['razorpay_payment_id'],
+            'razorpay_signature': data['razorpay_signature']
+        })
+
+        #AFTER SUCCESS → place order (reuse your logic)
+        return jsonify({"status": "success"})
+
+    except Exception as e:
+        print(f"[VERIFY ERROR] {e}")
+        return jsonify({"status": "failed"}), 400
 
 
 @app.route('/api/register', methods=['POST'])
