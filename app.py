@@ -879,6 +879,11 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    session.clear()
+    return jsonify({"message": "Logged out successfully"}), 200
+
 @app.route('/api/create-razorpay-order', methods=['POST'])
 def create_razorpay_order():
     if 'user_id' not in session:
