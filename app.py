@@ -1158,6 +1158,10 @@ def place_order_cart():
 
         address_str = f"{plot_no},{street},{area},{state},{pincode},{country}"
 
+        # ✅ Generate order_group_id
+        cursor.execute("SELECT COALESCE(MAX(order_group_id), 0) + 1 AS next_group FROM orders")
+        order_group_id = cursor.fetchone()['next_group']
+
         # ✅ Fetch cart items
         cursor.execute("""
             SELECT c.product_id, c.quantity, p.price
@@ -1180,9 +1184,9 @@ def place_order_cart():
             price = item['price']
 
             cursor.execute("""
-                INSERT INTO orders(user_id, product_id, quantity, address)
-                VALUES (%s, %s, %s, %s)
-            """, (user_id, product_id, quantity, address_str))
+                INSERT INTO orders(user_id, product_id, quantity, address, order_group_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, product_id, quantity, address_str, order_group_id))
 
             total_amount += price * quantity
 
@@ -1193,7 +1197,8 @@ def place_order_cart():
 
         return jsonify({
             "message": "Order placed successfully",
-            "total": total_amount
+            "total": total_amount,
+            "order_group_id": order_group_id
         }), 200
 
     except Exception as e:
@@ -1212,35 +1217,43 @@ def order_confirmation_api():
         return jsonify({"error": "Not logged in"}), 401
 
     user_id = get_current_user_id()
+    order_group_id = request.args.get('order_group_id')
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # ✅ Step 1: Get latest order timestamp
-        cursor.execute("""
-            SELECT order_date
-            FROM orders
-            WHERE user_id = %s
-            ORDER BY order_id DESC
-            LIMIT 1
-        """, (user_id,))
+        if order_group_id:
+            # ✅ Fetch by specific order_group_id
+            cursor.execute("""
+                SELECT p.product_name, p.Ingredients, p.price, o.quantity, o.address, o.order_group_id
+                FROM orders o
+                JOIN product p ON p.product_id = o.product_id
+                WHERE o.user_id = %s AND o.order_group_id = %s
+                ORDER BY o.order_id ASC
+            """, (user_id, order_group_id))
+        else:
+            # ✅ Fallback: Get latest order_group_id
+            cursor.execute("""
+                SELECT order_group_id
+                FROM orders
+                WHERE user_id = %s AND order_group_id IS NOT NULL
+                ORDER BY order_id DESC
+                LIMIT 1
+            """, (user_id,))
 
-        latest = cursor.fetchone()
+            latest = cursor.fetchone()
 
-        if not latest:
-            return jsonify({"orders": []}), 200
+            if not latest:
+                return jsonify({"orders": []}), 200
 
-        latest_date = latest['order_date']
-
-        # ✅ Step 2: Fetch only that order batch
-        cursor.execute("""
-            SELECT p.product_name, p.Ingredients, p.price, o.quantity, o.address
-            FROM orders o
-            JOIN product p ON p.product_id = o.product_id
-            WHERE o.user_id = %s AND o.order_date = %s
-            ORDER BY o.order_id ASC
-        """, (user_id, latest_date))
+            cursor.execute("""
+                SELECT p.product_name, p.Ingredients, p.price, o.quantity, o.address, o.order_group_id
+                FROM orders o
+                JOIN product p ON p.product_id = o.product_id
+                WHERE o.user_id = %s AND o.order_group_id = %s
+                ORDER BY o.order_id ASC
+            """, (user_id, latest['order_group_id']))
 
         orders = cursor.fetchall()
 
@@ -1274,19 +1287,23 @@ def buy_now_api():
     user_id = get_current_user_id()
 
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
         address_str = f"{plot_no},{street},{area},{state},{pincode},{country}"
 
+        # ✅ Generate order_group_id
+        cursor.execute("SELECT COALESCE(MAX(order_group_id), 0) + 1 AS next_group FROM orders")
+        order_group_id = cursor.fetchone()['next_group']
+
         cursor.execute("""
-            INSERT INTO orders(user_id, product_id, quantity, address, order_date)
-            VALUES(%s,%s,%s,%s,NOW())
-        """, (user_id, product_id, quantity, address_str))
+            INSERT INTO orders(user_id, product_id, quantity, address, order_date, order_group_id)
+            VALUES(%s,%s,%s,%s,NOW(),%s)
+        """, (user_id, product_id, quantity, address_str, order_group_id))
 
         conn.commit()
 
-        return jsonify({"message": "Order placed"}), 200
+        return jsonify({"message": "Order placed", "order_group_id": order_group_id}), 200
 
     except Exception as e:
         print("🔥 BUY NOW ERROR:", e)   # 👈 THIS IS CRITICAL
@@ -1296,6 +1313,138 @@ def buy_now_api():
         cursor.close()
         conn.close()
 
+@app.route('/api/orders', methods=['GET'])
+def get_orders():
+    if 'user_id' not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        query = """
+        SELECT 
+            o.order_id,
+            o.order_date,
+            o.quantity,
+            o.address,
+            o.order_group_id,
+            p.product_name AS name,
+            p.price
+        FROM orders o
+        JOIN product p ON o.product_id = p.product_id
+        WHERE o.user_id = %s
+        ORDER BY o.order_group_id DESC, o.order_id ASC
+        """
+
+        cursor.execute(query, (session['user_id'],))
+        rows = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        # ✅ Group orders by order_group_id
+        groups = {}
+        for row in rows:
+            gid = row.get('order_group_id')
+            if gid is None:
+                # Legacy orders without group id — treat each as its own group
+                gid = f"legacy_{row['order_id']}"
+            if gid not in groups:
+                groups[gid] = {
+                    "order_group_id": row.get('order_group_id'),
+                    "order_date": row['order_date'],
+                    "address": row['address'],
+                    "items": [],
+                    "total": 0
+                }
+            groups[gid]["items"].append({
+                "order_id": row['order_id'],
+                "name": row['name'],
+                "quantity": row['quantity'],
+                "price": row['price']
+            })
+            groups[gid]["total"] += row['price'] * row['quantity']
+
+        result = list(groups.values())
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print("🔥 ERROR:", e)
+        return jsonify({"error": "Failed to fetch orders"}), 500
+
+@app.route("/api/check-username", methods=["GET"])
+def check_username():
+    name = request.args.get("name")
+
+    if not name:
+        return jsonify({"available": False}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            "SELECT user_id FROM customerdetails WHERE username = %s",
+            (name,)
+        )
+        existing = cursor.fetchone()
+
+        return jsonify({"available": not bool(existing)})
+
+    except Exception as e:
+        print(e)
+        return jsonify({"available": False}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+@app.route("/api/update-name", methods=["POST"])
+def update_name():
+    if "user_id" not in session:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json()
+    new_name = data.get("name")
+
+    if not new_name:
+        return jsonify({"error": "Name is required"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # 🔍 Check if username already exists
+        cursor.execute(
+            "SELECT user_id FROM customerdetails WHERE username = %s",
+            (new_name,)
+        )
+        existing = cursor.fetchone()
+
+        # ⚠️ allow if it's same user (important)
+        if existing and existing["user_id"] != session["user_id"]:
+            return jsonify({"error": "Username already taken"}), 400
+
+        # ✅ Update username
+        cursor.execute(
+            "UPDATE customerdetails SET username = %s WHERE user_id = %s",
+            (new_name, session["user_id"])
+        )
+        conn.commit()
+
+        # ✅ Update session so /api/me returns the new name
+        session["username"] = new_name
+
+        return jsonify({"message": "Username updated successfully"})
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": "Failed to update name"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 if __name__ == '__main__':
     if FLASK_ENV == 'production':
         app.run(debug=False, ssl_context='adhoc')
