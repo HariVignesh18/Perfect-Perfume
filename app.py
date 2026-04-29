@@ -1080,6 +1080,31 @@ def add_to_cart_api():
 
     return jsonify({"message": "Added to cart"}), 200
 
+@app.route('/api/cart/update/<int:product_id>', methods=['PATCH'])
+def update_cart_qty(product_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+
+    data = request.json
+    quantity = data.get('quantity', 1)
+
+    if quantity < 1:
+        return jsonify({"error": "Quantity must be at least 1"}), 400
+
+    user_id = get_current_user_id()
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("UPDATE cart SET quantity=%s WHERE user_id=%s AND product_id=%s",
+                   (quantity, user_id, product_id))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    return jsonify({"message": "Updated"}), 200
+
 @app.route('/api/cart/remove/<int:product_id>', methods=['DELETE'])
 def remove_cart_item(product_id):
     if 'user_id' not in session:
